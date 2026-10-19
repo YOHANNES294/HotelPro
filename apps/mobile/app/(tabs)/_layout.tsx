@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Colors } from '../../src/constants/theme';
 import { useAuth } from '../../src/context/auth-context';
 import { useSync } from '../../src/context/sync-context';
@@ -23,11 +23,15 @@ export default function TabLayout() {
   const { pendingCount } = useSync();
 
   if (isLoading) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
   }
 
   if (!user) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/login" />;
   }
 
   const isKitchen = user?.role === 'CHEF' || user?.role === 'KITCHEN_STAFF';

@@ -46,7 +46,7 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (result.success) {
-      router.replace('/(tabs)');
+      router.replace('/');
     } else {
       setErrorMessage(result.error || 'Login failed');
     }

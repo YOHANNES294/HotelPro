@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "hotelpro",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0f172a",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -23,7 +24,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.hotelpro.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "CAMERA",
         "INTERNET",
