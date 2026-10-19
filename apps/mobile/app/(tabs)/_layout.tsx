@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../src/constants/theme';
 import { useAuth } from '../../src/context/auth-context';
@@ -19,8 +19,16 @@ function TabIcon({ label, badgeCount }: { label: string; badgeCount?: number }) 
 }
 
 export default function TabLayout() {
-  const { user, hasRole } = useAuth();
+  const { user, isLoading } = useAuth();
   const { pendingCount } = useSync();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   const isKitchen = user?.role === 'CHEF' || user?.role === 'KITCHEN_STAFF';
   const isHousekeeping = user?.role === 'HOUSEKEEPING';

@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import React from 'react';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider, useAuth } from '../src/context/auth-context';
+import { AuthProvider } from '../src/context/auth-context';
 import { SyncProvider } from '../src/context/sync-context';
 import { Colors } from '../src/constants/theme';
 import { View, Text, TouchableOpacity } from 'react-native';
@@ -11,7 +11,7 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ color: Colors.danger, fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>
-        Application Error
+        HotelPro Error
       </Text>
       <Text style={{ color: Colors.text, fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
         {error?.message || 'An unexpected error occurred'}
@@ -26,33 +26,12 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
   );
 }
 
-function NavigationWatcher() {
-  const { user, isLoading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === '(auth)';
-
-    if (!user && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
-      router.replace('/(tabs)');
-    }
-  }, [user, isLoading, segments, router]);
-
-  return null;
-}
-
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <SyncProvider>
           <StatusBar style="light" />
-          <NavigationWatcher />
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: Colors.surface },

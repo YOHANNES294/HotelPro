@@ -44,8 +44,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, [token, isSyncing, refreshCount]);
 
   useEffect(() => {
-    refreshCount();
     if (token) {
+      refreshCount();
       syncNow();
     }
   }, [token, refreshCount, syncNow]);

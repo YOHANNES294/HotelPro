@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
+let dbInitFailed = false;
 
 // Safe fallback for web or if SQLite is unavailable
 let fallbackQueue: QueuedAction[] = [];
@@ -9,16 +10,21 @@ let fallbackRooms: any[] = [];
 let fallbackOrders: any[] = [];
 
 export function getDatabase(): SQLite.SQLiteDatabase | null {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || dbInitFailed) {
     return null;
   }
   if (!dbInstance) {
     try {
-      dbInstance = SQLite.openDatabaseSync('hotelpro_offline.db');
-      initDatabase(dbInstance);
+      if (SQLite && typeof SQLite.openDatabaseSync === 'function') {
+        dbInstance = SQLite.openDatabaseSync('hotelpro_offline.db');
+        initDatabase(dbInstance);
+      } else {
+        dbInitFailed = true;
+      }
     } catch (e) {
       console.warn('SQLite init warning, using fallback storage:', e);
-      return null;
+      dbInitFailed = true;
+      dbInstance = null;
     }
   }
   return dbInstance;
