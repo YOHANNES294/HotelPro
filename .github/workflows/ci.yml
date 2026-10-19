@@ -1,0 +1,112 @@
+name: HotelPro CI Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint-and-typecheck:
+    name: Code Quality & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Shared Package
+        run: npm run build --workspace=@hotelpro/shared
+
+      - name: Lint Workspace Code
+        run: npm run lint
+
+      - name: Typecheck Backend API
+        run: npx tsc --noEmit --project apps/api/tsconfig.json
+
+      - name: Typecheck Web Application
+        run: npx tsc --noEmit --project apps/web/tsconfig.json
+
+      - name: Typecheck Mobile Application
+        run: npx tsc --noEmit --project apps/mobile/tsconfig.json
+
+  test-api:
+    name: Backend API Automated Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: hotelpro_test
+          POSTGRES_USER: hotelpro
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Shared Package
+        run: npm run build --workspace=@hotelpro/shared
+
+      - name: Generate Prisma Client & Migrate Test DB
+        env:
+          DATABASE_URL: postgresql://hotelpro:test_password@localhost:5432/hotelpro_test?schema=public
+        run: |
+          cd apps/api
+          npx prisma db push --skip-generate
+          npx prisma generate
+
+      - name: Run Jest Test Suite
+        env:
+          DATABASE_URL: postgresql://hotelpro:test_password@localhost:5432/hotelpro_test?schema=public
+          JWT_SECRET: test_jwt_secret_key_123456789
+          NODE_ENV: test
+        run: npm test --workspace=@hotelpro/api
+
+  build-web:
+    name: Next.js Web Production Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Shared Package
+        run: npm run build --workspace=@hotelpro/shared
+
+      - name: Build Next.js Production Bundle
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+        run: npm run build --workspace=@hotelpro/web

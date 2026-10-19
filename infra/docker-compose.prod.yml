@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hotelpro-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hotelpro}
+      POSTGRES_USER: ${POSTGRES_USER:-hotelpro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Database password required}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - hotelpro_prod_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hotelpro} -d ${POSTGRES_DB:-hotelpro}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hotelpro-network
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    container_name: hotelpro-api-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hotelpro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hotelpro}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT Secret required}
+      REFRESH_SECRET: ${REFRESH_SECRET:?Refresh Secret required}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://hotelpro.app}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hotelpro-network
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    container_name: hotelpro-web-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - hotelpro-network
+
+volumes:
+  hotelpro_prod_postgres_data:
+
+networks:
+  hotelpro-network:
+    driver: bridge

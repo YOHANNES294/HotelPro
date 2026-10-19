@@ -1,0 +1,45 @@
+# Multi-stage Dockerfile for HotelPro Backend API
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# Copy root configurations and workspace manifests
+COPY package*.json ./
+COPY packages/shared/package*.json ./packages/shared/
+COPY apps/api/package*.json ./apps/api/
+
+# Install dependencies
+RUN npm ci
+
+# Copy source trees
+COPY packages/shared ./packages/shared
+COPY apps/api ./apps/api
+
+# Generate Prisma Client & Build shared + api packages
+WORKDIR /app/apps/api
+RUN npx prisma generate
+RUN npm run build --workspace=@hotelpro/shared
+RUN npm run build --workspace=@hotelpro/api
+
+# Runner stage
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=4000
+
+# Copy built artifacts and runtime dependencies
+COPY package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/shared/package*.json ./packages/shared/
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package*.json ./apps/api/
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+
+USER node
+EXPOSE 4000
+
+WORKDIR /app/apps/api
+CMD ["node", "dist/server.js"]

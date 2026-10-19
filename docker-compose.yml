@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hotelpro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hotelpro
+      POSTGRES_USER: hotelpro
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hotelpro_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - hotelpro_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotelpro -d hotelpro"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hotelpro_postgres_data:
