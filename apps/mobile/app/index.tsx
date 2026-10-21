@@ -3,6 +3,7 @@ import { Redirect } from 'expo-router';
 import { useAuth } from '../src/context/auth-context';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '../src/constants/theme';
+import LoginScreen from './login';
 
 export default function Index() {
   const { user, isLoading } = useAuth();
@@ -19,5 +20,6 @@ export default function Index() {
     return <Redirect href="/(tabs)/dashboard" />;
   }
 
-  return <Redirect href="/login" />;
+  // Directly render the Login screen without intermediate redirects on first launch
+  return <LoginScreen />;
 }

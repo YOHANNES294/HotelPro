@@ -1,7 +1,6 @@
-import React from 'react';
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Stack, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/context/auth-context';
 import { SyncProvider } from '../src/context/sync-context';
 import { Colors } from '../src/constants/theme';
@@ -27,25 +26,28 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Forcibly dismiss splash screen once RootLayout is mounted
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <SyncProvider>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: Colors.surface },
-              headerTintColor: Colors.text,
-              contentStyle: { backgroundColor: Colors.background },
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-        </SyncProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <SyncProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: Colors.surface },
+            headerTintColor: Colors.text,
+            contentStyle: { backgroundColor: Colors.background },
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </SyncProvider>
+    </AuthProvider>
   );
 }
