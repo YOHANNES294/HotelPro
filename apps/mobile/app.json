@@ -24,7 +24,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.hotelpro.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "permissions": [
         "CAMERA",
         "INTERNET",
@@ -32,7 +32,15 @@
       ]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {
