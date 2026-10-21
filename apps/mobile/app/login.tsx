@@ -10,9 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAuth } from '../../src/context/auth-context';
-import { Colors } from '../../src/constants/theme';
-import { getApiBaseUrl, setApiBaseUrl } from '../../src/services/api-client';
+import { useAuth } from '../src/context/auth-context';
+import { Colors } from '../src/constants/theme';
+import { getApiBaseUrl, setApiBaseUrl } from '../src/services/api-client';
 import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
@@ -46,7 +46,7 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (result.success) {
-      router.replace('/');
+      router.replace('/(tabs)/dashboard');
     } else {
       setErrorMessage(result.error || 'Login failed');
     }
@@ -128,11 +128,11 @@ export default function LoginScreen() {
                 style={styles.input}
                 value={serverUrl}
                 onChangeText={setServerUrl}
-                placeholder="http://10.0.2.2:4000"
+                placeholder="http://192.168.10.171:4000"
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.helperText}>
-                Android emulator uses 10.0.2.2. Real device requires LAN IP (e.g. 192.168.1.X).
+                Android emulator uses 10.0.2.2. Real device requires LAN IP (e.g. 192.168.10.171).
               </Text>
             </View>
           )}
