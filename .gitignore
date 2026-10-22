@@ -10,3 +10,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+cloudflared.exe
+tunnel.log

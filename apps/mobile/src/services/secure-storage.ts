@@ -18,13 +18,19 @@ export const secureStorage = {
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
-        else memoryFallback.set(key, value);
+        if (typeof localStorage !== 'undefined') localStorage.setItem(key, value || '');
+        else memoryFallback.set(key, value || '');
         return;
       }
-      await SecureStore.setItemAsync(key, value);
+      if (!value) {
+        await SecureStore.deleteItemAsync(key).catch(() => {});
+        memoryFallback.delete(key);
+        return;
+      }
+      await SecureStore.setItemAsync(key, String(value));
+      memoryFallback.set(key, String(value));
     } catch {
-      memoryFallback.set(key, value);
+      memoryFallback.set(key, value || '');
     }
   },
 

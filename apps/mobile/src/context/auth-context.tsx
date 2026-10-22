@@ -65,21 +65,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: res.error || 'Invalid credentials' };
       }
 
-      const receivedToken = res.data.token;
+      const receivedToken = res.data.token || res.data.tokens?.accessToken || '';
+      const userPayload = res.data.user || {};
       const receivedUser: UserSession = {
-        id: res.data.user.id,
-        name: res.data.user.name,
-        email: res.data.user.email,
-        role: res.data.user.role,
-        organizationId: res.data.user.organizationId,
-        branchId: res.data.user.branchId,
-        organizationName: res.data.organization?.name,
+        id: userPayload.id || '',
+        name: userPayload.fullName || userPayload.name || 'User',
+        email: userPayload.email || email,
+        role: userPayload.role || 'BRANCH_MANAGER',
+        organizationId: userPayload.organizationId || userPayload.organization?.id || '',
+        branchId: userPayload.branchId || userPayload.branch?.id || undefined,
+        organizationName: userPayload.organization?.name || res.data.organization?.name || 'HotelPro',
       };
 
-      await secureStorage.setItem('auth_token', receivedToken);
+      if (receivedToken) {
+        await secureStorage.setItem('auth_token', receivedToken);
+      }
       await secureStorage.setItem('auth_user', JSON.stringify(receivedUser));
 
-      setToken(receivedToken);
+      setToken(receivedToken || null);
       setUser(receivedUser);
       return { success: true };
     } catch (err: any) {

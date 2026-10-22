@@ -183,11 +183,19 @@ export class AuthService {
     });
 
     return {
+      token: accessToken,
+      organization: {
+        id: user.organization.id,
+        name: user.organization.name,
+      },
       user: {
         id: user.id,
-        email: user.email,
+        name: user.fullName,
         fullName: user.fullName,
+        email: user.email,
         role: user.role,
+        organizationId: user.organizationId,
+        branchId: primaryBranch?.id || null,
         organization: {
           id: user.organization.id,
           name: user.organization.name,

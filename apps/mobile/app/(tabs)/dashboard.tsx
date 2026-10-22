@@ -70,9 +70,9 @@ export default function DashboardScreen() {
       <View style={styles.headerBox}>
         <View>
           <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.name}</Text>
+          <Text style={styles.userName}>{user?.name || 'Staff'}</Text>
           <Text style={styles.userRole}>
-            {user?.role.replace('_', ' ')} • {user?.organizationName || 'HotelPro'}
+            {(user?.role || 'STAFF').replace(/_/g, ' ')} • {user?.organizationName || 'HotelPro'}
           </Text>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -112,7 +112,7 @@ export default function DashboardScreen() {
         <View style={[styles.card, styles.cardFull]}>
           <Text style={styles.cardLabel}>Today's Sales</Text>
           <Text style={[styles.cardValue, { color: Colors.success }]}>
-            {stats.dailyRevenue.toLocaleString()} ETB
+            {(stats.dailyRevenue || 0).toLocaleString()} ETB
           </Text>
           <Text style={styles.cardSub}>Rooms, Dining & Bar</Text>
         </View>

@@ -128,7 +128,7 @@ export default function LoginScreen() {
                 style={styles.input}
                 value={serverUrl}
                 onChangeText={setServerUrl}
-                placeholder="http://192.168.10.171:4000"
+                placeholder="https://spies-bottom-threatening-intensity.trycloudflare.com"
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.helperText}>
