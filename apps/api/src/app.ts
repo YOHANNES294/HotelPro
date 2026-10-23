@@ -1,4 +1,6 @@
 import express, { Express, Request, Response } from 'express';
+import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -115,6 +117,22 @@ export function createApp(): Express {
   app.use('/api/v1/reports', reportRouter);
   app.use('/api/v1/sync', syncRouter);
   app.use('/api/v1/audit', auditRouter);
+
+  // Direct APK Download
+  app.get(['/download/hotelpro.apk', '/hotelpro.apk'], (req: Request, res: Response) => {
+    const candidates = [
+      path.resolve(process.cwd(), 'apps/mobile_flutter/build/app/outputs/flutter-apk/app-release.apk'),
+      path.resolve(process.cwd(), '../mobile_flutter/build/app/outputs/flutter-apk/app-release.apk'),
+      path.resolve(process.cwd(), '../../apps/mobile_flutter/build/app/outputs/flutter-apk/app-release.apk'),
+      'c:/Users/Yoni/HotelPro/apps/mobile_flutter/build/app/outputs/flutter-apk/app-release.apk',
+    ];
+    const apkPath = candidates.find((p) => fs.existsSync(p));
+    if (apkPath) {
+      res.download(apkPath, 'hotelpro-flutter.apk');
+    } else {
+      res.status(404).send('APK not found on server');
+    }
+  });
 
   // 404 handler
   app.use((req: Request, res: Response) => {
