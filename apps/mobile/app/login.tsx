@@ -128,7 +128,7 @@ export default function LoginScreen() {
                 style={styles.input}
                 value={serverUrl}
                 onChangeText={setServerUrl}
-                placeholder="https://spies-bottom-threatening-intensity.trycloudflare.com"
+                placeholder="https://icon-starring-ntsc-yea.trycloudflare.com"
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.helperText}>

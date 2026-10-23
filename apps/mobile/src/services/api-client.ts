@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { secureStorage } from './secure-storage';
 
-const DEFAULT_DEV_URL = 'https://spies-bottom-threatening-intensity.trycloudflare.com';
+const DEFAULT_DEV_URL = 'https://icon-starring-ntsc-yea.trycloudflare.com';
 
 let customBaseUrl: string | null = null;
 
