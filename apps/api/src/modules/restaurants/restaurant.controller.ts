@@ -245,13 +245,30 @@ export class RestaurantController {
   static async listOrders(req: Request, res: Response, next: NextFunction) {
     try {
       const branchId = req.query.branchId as string;
-      const status = req.query.status as OrderStatus;
+      const statusParam = req.query.status as string;
 
       const where: Prisma.OrderWhereInput = {
         organizationId: req.tenantId,
       };
       if (branchId) where.branchId = branchId;
-      if (status) where.status = status;
+      if (statusParam) {
+        const validStatuses = Object.values(OrderStatus) as string[];
+        if (statusParam.includes(',')) {
+          const statuses = statusParam
+            .split(',')
+            .map((s) => s.trim().toUpperCase())
+            .map((s) => s === 'CONFIRMED' ? OrderStatus.PENDING : s === 'PREPARING' ? OrderStatus.IN_KITCHEN : s)
+            .filter((s) => validStatuses.includes(s)) as OrderStatus[];
+          if (statuses.length > 0) {
+            where.status = { in: statuses };
+          }
+        } else {
+          const mapped = statusParam === 'CONFIRMED' ? OrderStatus.PENDING : statusParam === 'PREPARING' ? OrderStatus.IN_KITCHEN : statusParam;
+          if (validStatuses.includes(mapped)) {
+            where.status = mapped as OrderStatus;
+          }
+        }
+      }
 
       const orders = await prisma.order.findMany({
         where,

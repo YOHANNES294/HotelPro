@@ -1,7 +1,19 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+
 class AppConstants {
   static const String appName = 'HotelPro';
   static const String appTagline = 'Mobile Operations Terminal';
-  static const String defaultApiUrl = 'https://compounds-surprising-commissioner-immigration.trycloudflare.com';
+  
+  static String get defaultApiUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:4000';
+    }
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:4000';
+    }
+    return 'http://127.0.0.1:4000';
+  }
 
   // Storage keys
   static const String keyAuthToken = 'hotelpro_auth_token';

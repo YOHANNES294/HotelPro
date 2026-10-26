@@ -20,13 +20,13 @@ class RoomModel {
   factory RoomModel.fromJson(Map<String, dynamic> json) {
     return RoomModel(
       id: json['id']?.toString() ?? '',
-      number: json['number']?.toString() ?? '',
-      typeName: json['typeName']?.toString() ?? json['roomType']?['name']?.toString() ?? 'Standard',
+      number: json['roomNumber']?.toString() ?? json['number']?.toString() ?? '',
+      typeName: json['roomType']?['name']?.toString() ?? json['typeName']?.toString() ?? 'Standard',
       floor: json['floor'] is int ? json['floor'] : int.tryParse(json['floor']?.toString() ?? '1') ?? 1,
       status: (json['status']?.toString() ?? 'AVAILABLE').toUpperCase(),
       pricePerNight: (json['pricePerNight'] is num)
           ? (json['pricePerNight'] as num).toDouble()
-          : double.tryParse(json['roomType']?['basePrice']?.toString() ?? '0') ?? 0.0,
+          : double.tryParse(json['roomType']?['basePrice']?.toString() ?? json['pricePerNight']?.toString() ?? '0') ?? 0.0,
       updatedAt: json['updatedAt'] is int ? json['updatedAt'] : DateTime.now().millisecondsSinceEpoch,
     );
   }
@@ -35,6 +35,7 @@ class RoomModel {
     return {
       'id': id,
       'number': number,
+      'roomNumber': number,
       'typeName': typeName,
       'floor': floor,
       'status': status,

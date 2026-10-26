@@ -5,6 +5,7 @@ import '../../../core/constants.dart';
 import '../../../core/theme.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/storage_service.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/sync_provider.dart';
 
 class SyncTab extends StatefulWidget {
@@ -50,8 +51,9 @@ class _SyncTabState extends State<SyncTab> {
     try {
       final res = await api.get('/financials/shifts/active');
       if (res.success && res.data is Map<String, dynamic> && mounted) {
+        final data = res.data as Map<String, dynamic>;
         setState(() {
-          _activeShift = res.data as Map<String, dynamic>;
+          _activeShift = data['shift'] as Map<String, dynamic>?;
         });
       } else {
         setState(() {
@@ -74,10 +76,23 @@ class _SyncTabState extends State<SyncTab> {
       return;
     }
 
+    final auth = context.read<AuthProvider>();
+    final branchId = auth.currentUser?.branchId;
+    if (branchId == null || branchId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active branch found for current user'), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
+
     setState(() => _isShiftLoading = true);
     final api = context.read<ApiService>();
 
-    final res = await api.post('/financials/shifts/open', body: {'startingCash': startingCash});
+    final res = await api.post('/financials/shifts/open', body: {
+      'branchId': branchId,
+      'openingCash': startingCash.toStringAsFixed(2),
+      'notes': 'Shift opened from mobile app',
+    });
     setState(() => _isShiftLoading = false);
 
     if (res.success) {
@@ -93,12 +108,17 @@ class _SyncTabState extends State<SyncTab> {
   }
 
   Future<void> _handleCloseShift() async {
+    if (_activeShift == null || _activeShift!['id'] == null) return;
+    final shiftId = _activeShift!['id'].toString();
     final actualCash = double.tryParse(_closingCashController.text.trim()) ?? 0.0;
 
     setState(() => _isShiftLoading = true);
     final api = context.read<ApiService>();
 
-    final res = await api.post('/financials/shifts/close', body: {'actualEndingCash': actualCash});
+    final res = await api.post('/financials/shifts/$shiftId/close', body: {
+      'countedCash': actualCash.toStringAsFixed(2),
+      'notes': 'Shift closed from mobile app',
+    });
     setState(() => _isShiftLoading = false);
 
     if (res.success) {
@@ -357,7 +377,7 @@ class _SyncTabState extends State<SyncTab> {
                 TextField(
                   controller: _serverUrlController,
                   style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: AppConstants.defaultApiUrl,
                   ),
                 ),

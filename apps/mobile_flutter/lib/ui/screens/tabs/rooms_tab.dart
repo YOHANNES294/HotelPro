@@ -19,6 +19,7 @@ class _RoomsTabState extends State<RoomsTab> {
   List<RoomModel> _rooms = [];
   String _selectedFilter = 'ALL';
   String _searchQuery = '';
+  String? _errorMessage;
 
   final _currencyFormat = NumberFormat.currency(symbol: 'ETB ', decimalDigits: 0);
 
@@ -45,19 +46,38 @@ class _RoomsTabState extends State<RoomsTab> {
       final api = context.read<ApiService>();
       final res = await api.get('/hotels/rooms');
 
-      if (res.success && res.data is List && mounted) {
-        final list = (res.data as List)
-            .map((r) => RoomModel.fromJson(r as Map<String, dynamic>))
+      if (res.success && res.data != null && mounted) {
+        List<dynamic> rawList = [];
+        if (res.data is List) {
+          rawList = res.data as List;
+        } else if (res.data is Map && res.data['rooms'] is List) {
+          rawList = res.data['rooms'] as List;
+        }
+
+        final list = rawList
+            .whereType<Map>()
+            .map((r) => RoomModel.fromJson(Map<String, dynamic>.from(r)))
             .toList();
 
         setState(() {
           _rooms = list;
+          _errorMessage = null;
         });
 
         final storage = await StorageService.getInstance();
         await storage.saveCachedRooms(list);
+      } else if (!res.success && mounted) {
+        setState(() {
+          _errorMessage = res.error;
+        });
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
+    }
   }
 
   Future<void> _onRefresh() async {
@@ -165,7 +185,8 @@ class _RoomsTabState extends State<RoomsTab> {
                     _buildStatusOption(room, 'AVAILABLE', 'Mark Available', AppColors.success),
                     _buildStatusOption(room, 'OCCUPIED', 'Mark Occupied', AppColors.danger),
                     _buildStatusOption(room, 'DIRTY', 'Needs Cleaning', AppColors.warning),
-                    _buildStatusOption(room, 'MAINTENANCE', 'Maintenance', AppColors.textMuted),
+                    _buildStatusOption(room, 'CLEANING', 'In Cleaning', AppColors.primary),
+                    _buildStatusOption(room, 'OUT_OF_SERVICE', 'Out of Service', AppColors.textMuted),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -236,7 +257,9 @@ class _RoomsTabState extends State<RoomsTab> {
                     const SizedBox(width: 8),
                     _buildFilterChip('DIRTY', 'Dirty (${_rooms.where((r) => r.status == 'DIRTY').length})'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('MAINTENANCE', 'Maintenance (${_rooms.where((r) => r.status == 'MAINTENANCE').length})'),
+                    _buildFilterChip('CLEANING', 'Cleaning (${_rooms.where((r) => r.status == 'CLEANING').length})'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('OUT_OF_SERVICE', 'Maintenance (${_rooms.where((r) => r.status == 'OUT_OF_SERVICE').length})'),
                   ],
                 ),
               ),
@@ -251,16 +274,33 @@ class _RoomsTabState extends State<RoomsTab> {
             color: AppColors.primary,
             child: filtered.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.hotel_outlined, size: 48, color: AppColors.textMuted),
-                        const SizedBox(height: 12),
-                        Text(
-                          _searchQuery.isNotEmpty ? 'No rooms match your search' : 'No rooms found',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _errorMessage != null ? Icons.lock_outline_rounded : Icons.hotel_outlined,
+                            size: 48,
+                            color: _errorMessage != null ? AppColors.warning : AppColors.textMuted,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _errorMessage != null
+                                ? 'Access Restricted'
+                                : (_searchQuery.isNotEmpty ? 'No rooms match your search' : 'No rooms found'),
+                            style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   )
                 : ListView.separated(

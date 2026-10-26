@@ -5,6 +5,7 @@ import '../../../core/theme.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/storage_service.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/sync_provider.dart';
 import '../../widgets/status_badge.dart';
 
@@ -51,8 +52,8 @@ class _OrdersTabState extends State<OrdersTab> {
 
       final results = await Future.wait([
         api.get('/restaurants/tables'),
-        api.get('/restaurants/menu/items'),
-        api.get('/restaurants/orders?status=PENDING,CONFIRMED,PREPARING,READY'),
+        api.get('/restaurants/menu'),
+        api.get('/restaurants/orders?status=PENDING,IN_KITCHEN,READY'),
       ]);
 
       if (mounted) {
@@ -60,8 +61,13 @@ class _OrdersTabState extends State<OrdersTab> {
         final menuRes = results[1];
         final ordersRes = results[2];
 
-        if (tablesRes.success && tablesRes.data is List) {
-          final tbls = (tablesRes.data as List).map((t) => t as Map<String, dynamic>).toList();
+        if (tablesRes.success && tablesRes.data != null) {
+          final rawTables = tablesRes.data is List
+              ? tablesRes.data as List
+              : (tablesRes.data is Map && tablesRes.data['tables'] is List)
+                  ? tablesRes.data['tables'] as List
+                  : [];
+          final tbls = rawTables.whereType<Map>().map((t) => Map<String, dynamic>.from(t)).toList();
           setState(() {
             _tables = tbls;
             if (tbls.isNotEmpty && _selectedTableId == null) {
@@ -70,18 +76,42 @@ class _OrdersTabState extends State<OrdersTab> {
           });
         }
 
-        if (menuRes.success && menuRes.data is List) {
-          final items = (menuRes.data as List)
-              .map((m) => MenuItemModel.fromJson(m as Map<String, dynamic>))
-              .toList();
+        if (menuRes.success && menuRes.data != null) {
+          final List<MenuItemModel> allItems = [];
+          final rawCategories = menuRes.data is List
+              ? menuRes.data as List
+              : (menuRes.data is Map && menuRes.data['categories'] is List)
+                  ? menuRes.data['categories'] as List
+                  : [];
+
+          for (final cat in rawCategories) {
+            if (cat is! Map) continue;
+            final catMap = Map<String, dynamic>.from(cat);
+            final catName = catMap['name']?.toString() ?? 'Mains';
+            final rawItems = catMap['menuItems'] ?? catMap['items'];
+            if (rawItems is List) {
+              for (final it in rawItems) {
+                if (it is! Map) continue;
+                allItems.add(MenuItemModel.fromJson(Map<String, dynamic>.from(it), categoryName: catName));
+              }
+            }
+          }
+
           setState(() {
-            _menuItems = items;
+            _menuItems = allItems;
           });
         }
 
-        if (ordersRes.success && ordersRes.data is List) {
-          final orders = (ordersRes.data as List)
-              .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
+        if (ordersRes.success && ordersRes.data != null) {
+          final rawOrders = ordersRes.data is List
+              ? ordersRes.data as List
+              : (ordersRes.data is Map && ordersRes.data['orders'] is List)
+                  ? ordersRes.data['orders'] as List
+                  : [];
+
+          final orders = rawOrders
+              .whereType<Map>()
+              .map((o) => OrderModel.fromJson(Map<String, dynamic>.from(o)))
               .toList();
           setState(() {
             _activeOrders = orders;
@@ -126,14 +156,21 @@ class _OrdersTabState extends State<OrdersTab> {
     final api = context.read<ApiService>();
     final sync = context.read<SyncProvider>();
 
+    final auth = context.read<AuthProvider>();
+    final branchId = auth.currentUser?.branchId ??
+        _tables.firstWhere(
+          (t) => t['id']?.toString() == _selectedTableId,
+          orElse: () => {},
+        )['branchId']?.toString();
+
     final orderPayload = {
+      'branchId': branchId,
       'tableId': _selectedTableId,
+      'orderType': 'DINE_IN',
       'items': _cart.map((c) => {
         'menuItemId': c.id,
         'quantity': c.quantity,
-        'price': c.price,
       }).toList(),
-      'type': 'DINE_IN',
     };
 
     try {
@@ -175,10 +212,11 @@ class _OrdersTabState extends State<OrdersTab> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final tableName = _tables.firstWhere(
+            final tableObj = _tables.firstWhere(
               (t) => t['id']?.toString() == _selectedTableId,
-              orElse: () => {'name': 'Selected Table'},
-            )['name']?.toString() ?? 'Table';
+              orElse: () => {'tableNumber': 'Selected Table'},
+            );
+            final tableName = tableObj['tableNumber']?.toString() ?? tableObj['name']?.toString() ?? 'Table';
 
             return SafeArea(
               child: Padding(
@@ -331,6 +369,12 @@ class _OrdersTabState extends State<OrdersTab> {
                   child: Text('Active Orders (${_activeOrders.length})'),
                 ),
               ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: AppColors.textMuted, size: 20),
+                tooltip: 'Refresh Data',
+                onPressed: _loadData,
+              ),
             ],
           ),
         ),
@@ -402,7 +446,7 @@ class _OrdersTabState extends State<OrdersTab> {
                       items: _tables.map((t) {
                         return DropdownMenuItem<String>(
                           value: t['id']?.toString(),
-                          child: Text(t['name']?.toString() ?? 'Table'),
+                          child: Text(t['tableNumber']?.toString() ?? t['name']?.toString() ?? 'Table'),
                         );
                       }).toList(),
                       onChanged: (val) => setState(() => _selectedTableId = val),
@@ -439,11 +483,19 @@ class _OrdersTabState extends State<OrdersTab> {
 
         // Menu Grid
         Expanded(
-          child: filteredMenu.isEmpty
-              ? const Center(
-                  child: Text('No menu items available', style: TextStyle(color: AppColors.textMuted)),
-                )
-              : GridView.builder(
+          child: RefreshIndicator(
+            onRefresh: _loadData,
+            color: AppColors.primary,
+            child: filteredMenu.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 120),
+                      Center(
+                        child: Text('No menu items available', style: TextStyle(color: AppColors.textMuted)),
+                      ),
+                    ],
+                  )
+                : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -504,6 +556,7 @@ class _OrdersTabState extends State<OrdersTab> {
                     );
                   },
                 ),
+          ),
         ),
       ],
     );

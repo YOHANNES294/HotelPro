@@ -13,14 +13,14 @@ class MenuItemModel {
     required this.price,
   });
 
-  factory MenuItemModel.fromJson(Map<String, dynamic> json) {
+  factory MenuItemModel.fromJson(Map<String, dynamic> json, {String? categoryName}) {
     return MenuItemModel(
       id: json['id']?.toString() ?? '',
-      nameEn: json['nameEn']?.toString() ?? json['name']?.toString() ?? 'Item',
-      nameAm: json['nameAm']?.toString(),
-      category: json['category'] is Map
+      nameEn: json['name']?.toString() ?? json['nameEn']?.toString() ?? 'Item',
+      nameAm: json['nameAmharic']?.toString() ?? json['nameAm']?.toString(),
+      category: categoryName ?? (json['category'] is Map
           ? json['category']['name']?.toString() ?? 'Mains'
-          : json['category']?.toString() ?? 'Mains',
+          : json['category']?.toString() ?? 'Mains'),
       price: (json['price'] is num)
           ? (json['price'] as num).toDouble()
           : double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
@@ -61,13 +61,14 @@ class OrderItemModel {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     final itemInfo = json['menuItem'] ?? json['item'] ?? {};
+    final unitPrice = json['unitPrice'] ?? json['price'];
     return OrderItemModel(
       id: json['id']?.toString() ?? '',
-      name: itemInfo['nameEn']?.toString() ?? json['name']?.toString() ?? 'Item',
+      name: json['itemName']?.toString() ?? itemInfo['name']?.toString() ?? itemInfo['nameEn']?.toString() ?? json['name']?.toString() ?? 'Item',
       quantity: json['quantity'] is int ? json['quantity'] : int.tryParse(json['quantity']?.toString() ?? '1') ?? 1,
-      price: (json['price'] is num)
-          ? (json['price'] as num).toDouble()
-          : double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      price: (unitPrice is num)
+          ? (unitPrice as num).toDouble()
+          : double.tryParse(unitPrice?.toString() ?? '0') ?? 0.0,
       notes: json['notes']?.toString(),
     );
   }
@@ -105,33 +106,42 @@ class OrderModel {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
-    final rawItems = json['items'] as List<dynamic>? ?? [];
+    // If ticket wraps order
+    final effectiveOrder = (json['order'] is Map<String, dynamic>)
+        ? json['order'] as Map<String, dynamic>
+        : json;
+
+    final rawItems = (effectiveOrder['items'] ?? json['items']) as List<dynamic>? ?? [];
     final itemsList = rawItems.map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>)).toList();
-    
-    final tableInfo = json['table'];
+
+    final tableInfo = effectiveOrder['table'] ?? json['table'];
     String tblName = 'Takeout / Bar';
     if (tableInfo is Map) {
-      tblName = tableInfo['name']?.toString() ?? 'Table ${tableInfo['number'] ?? ''}';
+      tblName = tableInfo['tableNumber']?.toString() ?? tableInfo['name']?.toString() ?? 'Table ${tableInfo['number'] ?? ''}';
+    } else if (effectiveOrder['tableName'] != null) {
+      tblName = effectiveOrder['tableName'].toString();
     } else if (json['tableName'] != null) {
       tblName = json['tableName'].toString();
     }
 
     DateTime created;
     try {
-      created = DateTime.parse(json['createdAt']?.toString() ?? DateTime.now().toIso8601String());
+      created = DateTime.parse((json['createdAt'] ?? effectiveOrder['createdAt'])?.toString() ?? DateTime.now().toIso8601String());
     } catch (_) {
       created = DateTime.now();
     }
 
+    final totalRaw = effectiveOrder['totalAmount'] ?? json['totalAmount'];
+
     return OrderModel(
-      id: json['id']?.toString() ?? '',
-      orderNumber: json['orderNumber']?.toString() ?? json['id']?.toString().substring(0, 8) ?? 'ORD',
-      tableId: json['tableId']?.toString(),
+      id: (json['orderId'] ?? effectiveOrder['id'] ?? json['id'])?.toString() ?? '',
+      orderNumber: (json['orderNumber'] ?? effectiveOrder['orderNumber'])?.toString() ?? (json['id']?.toString().substring(0, 8)) ?? 'ORD',
+      tableId: (effectiveOrder['tableId'] ?? json['tableId'])?.toString(),
       tableName: tblName,
-      status: (json['status']?.toString() ?? 'PENDING').toUpperCase(),
-      totalAmount: (json['totalAmount'] is num)
-          ? (json['totalAmount'] as num).toDouble()
-          : double.tryParse(json['totalAmount']?.toString() ?? '0') ?? 0.0,
+      status: (json['status'] ?? effectiveOrder['status'])?.toString().toUpperCase() ?? 'PENDING',
+      totalAmount: (totalRaw is num)
+          ? (totalRaw as num).toDouble()
+          : double.tryParse(totalRaw?.toString() ?? '0') ?? 0.0,
       items: itemsList,
       createdAt: created,
     );

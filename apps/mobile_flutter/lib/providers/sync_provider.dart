@@ -62,7 +62,7 @@ class SyncProvider extends ChangeNotifier {
         'idempotencyKey': item.id,
         'type': item.type,
         'payload': item.payload,
-        'clientTimestamp': item.createdAt.toIso8601String(),
+        'clientTimestamp': item.createdAt.toUtc().toIso8601String(),
       }).toList();
 
       final res = await _apiService.post('/sync', body: {'operations': operations});
@@ -101,18 +101,30 @@ class SyncProvider extends ChangeNotifier {
     try {
       // Sync fresh rooms
       final roomsRes = await _apiService.get('/hotels/rooms');
-      if (roomsRes.success && roomsRes.data is List) {
-        final rooms = (roomsRes.data as List)
-            .map((r) => RoomModel.fromJson(r as Map<String, dynamic>))
+      if (roomsRes.success && roomsRes.data != null) {
+        final rawRooms = roomsRes.data is List
+            ? roomsRes.data as List
+            : (roomsRes.data is Map && roomsRes.data['rooms'] is List)
+                ? roomsRes.data['rooms'] as List
+                : [];
+        final rooms = rawRooms
+            .whereType<Map>()
+            .map((r) => RoomModel.fromJson(Map<String, dynamic>.from(r)))
             .toList();
         await _storageService.saveCachedRooms(rooms);
       }
 
       // Sync active orders
-      final ordersRes = await _apiService.get('/restaurants/orders?status=CONFIRMED,PREPARING,READY');
-      if (ordersRes.success && ordersRes.data is List) {
-        final orders = (ordersRes.data as List)
-            .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
+      final ordersRes = await _apiService.get('/restaurants/orders?status=PENDING,IN_KITCHEN,READY');
+      if (ordersRes.success && ordersRes.data != null) {
+        final rawOrders = ordersRes.data is List
+            ? ordersRes.data as List
+            : (ordersRes.data is Map && ordersRes.data['orders'] is List)
+                ? ordersRes.data['orders'] as List
+                : [];
+        final orders = rawOrders
+            .whereType<Map>()
+            .map((o) => OrderModel.fromJson(Map<String, dynamic>.from(o)))
             .toList();
         await _storageService.saveCachedOrders(orders);
       }

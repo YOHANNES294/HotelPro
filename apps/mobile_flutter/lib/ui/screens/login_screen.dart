@@ -223,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextField(
                             controller: _serverUrlController,
                             style: const TextStyle(fontSize: 12),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: AppConstants.defaultApiUrl,
                             ),
                           ),

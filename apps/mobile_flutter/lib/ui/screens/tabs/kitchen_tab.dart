@@ -38,7 +38,7 @@ class _KitchenTabState extends State<KitchenTab> {
       final storage = await StorageService.getInstance();
       final cached = storage.getCachedOrders();
       final kitchenRelevant = cached.where((o) =>
-        o.status == 'CONFIRMED' || o.status == 'PREPARING' || o.status == 'READY'
+        o.status == 'PENDING' || o.status == 'CONFIRMED' || o.status == 'IN_KITCHEN' || o.status == 'PREPARING' || o.status == 'READY'
       ).toList();
 
       if (kitchenRelevant.isNotEmpty && mounted) {
@@ -51,10 +51,22 @@ class _KitchenTabState extends State<KitchenTab> {
     // 2. Fetch fresh tickets
     try {
       final api = context.read<ApiService>();
-      final res = await api.get('/restaurants/orders?status=CONFIRMED,PREPARING,READY');
+      var res = await api.get('/restaurants/kitchen/tickets');
+      if (!res.success) {
+        res = await api.get('/restaurants/orders?status=PENDING,IN_KITCHEN,READY');
+      }
 
-      if (res.success && res.data is List && mounted) {
-        final list = (res.data as List)
+      if (res.success && res.data != null && mounted) {
+        List<dynamic> rawList = [];
+        if (res.data is List) {
+          rawList = res.data as List;
+        } else if (res.data is Map && res.data['tickets'] is List) {
+          rawList = res.data['tickets'] as List;
+        } else if (res.data is Map && res.data['orders'] is List) {
+          rawList = res.data['orders'] as List;
+        }
+
+        final list = rawList
             .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
             .toList();
 
@@ -71,7 +83,7 @@ class _KitchenTabState extends State<KitchenTab> {
   Future<void> _updateTicketStatus(OrderModel order, String newStatus) async {
     // Optimistic update
     setState(() {
-      if (newStatus == 'COMPLETED') {
+      if (newStatus == 'COMPLETED' || newStatus == 'SERVED') {
         _tickets.removeWhere((t) => t.id == order.id);
       } else {
         _tickets = _tickets.map((t) => t.id == order.id ? t.copyWith(status: newStatus) : t).toList();
@@ -172,8 +184,10 @@ class _KitchenTabState extends State<KitchenTab> {
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: ticket.status == 'CONFIRMED' ? AppColors.warning : AppColors.border,
-                            width: ticket.status == 'CONFIRMED' ? 1.5 : 1,
+                            color: (ticket.status == 'PENDING' || ticket.status == 'CONFIRMED')
+                                ? AppColors.warning
+                                : AppColors.border,
+                            width: (ticket.status == 'PENDING' || ticket.status == 'CONFIRMED') ? 1.5 : 1,
                           ),
                         ),
                         child: Column(
@@ -268,7 +282,7 @@ class _KitchenTabState extends State<KitchenTab> {
   }
 
   Widget _buildActionForTicket(OrderModel ticket) {
-    if (ticket.status == 'CONFIRMED') {
+    if (ticket.status == 'PENDING' || ticket.status == 'CONFIRMED') {
       return ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accent,
@@ -276,9 +290,9 @@ class _KitchenTabState extends State<KitchenTab> {
         ),
         icon: const Icon(Icons.play_arrow_rounded, size: 18),
         label: const Text('Start Preparing'),
-        onPressed: () => _updateTicketStatus(ticket, 'PREPARING'),
+        onPressed: () => _updateTicketStatus(ticket, 'IN_KITCHEN'),
       );
-    } else if (ticket.status == 'PREPARING') {
+    } else if (ticket.status == 'IN_KITCHEN' || ticket.status == 'PREPARING') {
       return ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.success,
@@ -296,8 +310,8 @@ class _KitchenTabState extends State<KitchenTab> {
           side: const BorderSide(color: AppColors.border),
         ),
         icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-        label: const Text('Complete & Clear Ticket'),
-        onPressed: () => _updateTicketStatus(ticket, 'COMPLETED'),
+        label: const Text('Mark Served & Complete'),
+        onPressed: () => _updateTicketStatus(ticket, 'SERVED'),
       );
     }
   }

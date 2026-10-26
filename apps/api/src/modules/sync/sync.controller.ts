@@ -16,6 +16,15 @@ import { Prisma } from '@prisma/client';
 export class SyncController {
   static async syncBatch(req: Request, res: Response, next: NextFunction) {
     try {
+      if (Array.isArray(req.body?.operations)) {
+        req.body.operations = req.body.operations.map((op: any) => {
+          let ts = op?.clientTimestamp;
+          if (typeof ts === 'string' && !ts.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(ts)) {
+            ts = `${ts}Z`;
+          }
+          return { ...op, clientTimestamp: ts };
+        });
+      }
       const validated = syncBatchSchema.parse(req.body);
       const results: SyncOperationResult[] = [];
       const tenantId = req.tenantId!;
@@ -159,7 +168,8 @@ export class SyncController {
         results,
         serverTimestamp: new Date().toISOString(),
       });
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[Sync Controller Error]:', err?.errors || err?.message || err);
       next(err);
     }
   }
@@ -213,7 +223,8 @@ export class SyncController {
         menuItems,
         serverTimestamp: new Date().toISOString(),
       });
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[Sync Controller Error]:', err?.errors || err?.message || err);
       next(err);
     }
   }

@@ -54,11 +54,22 @@ class _DashboardTabState extends State<DashboardTab> {
 
       if (res.success && res.data is Map<String, dynamic> && mounted) {
         final data = res.data as Map<String, dynamic>;
+        final summary = (data['summary'] is Map<String, dynamic>)
+            ? data['summary'] as Map<String, dynamic>
+            : data;
         setState(() {
-          _roomsTotal = data['roomsTotal'] is int ? data['roomsTotal'] : int.tryParse(data['roomsTotal']?.toString() ?? '0') ?? _roomsTotal;
-          _roomsOccupied = data['roomsOccupied'] is int ? data['roomsOccupied'] : int.tryParse(data['roomsOccupied']?.toString() ?? '0') ?? _roomsOccupied;
-          _activeOrders = data['activeOrders'] is int ? data['activeOrders'] : int.tryParse(data['activeOrders']?.toString() ?? '0') ?? _activeOrders;
-          _dailyRevenue = data['dailyRevenue'] is num ? (data['dailyRevenue'] as num).toDouble() : double.tryParse(data['dailyRevenue']?.toString() ?? '0') ?? 0.0;
+          _roomsTotal = summary['totalRooms'] is int
+              ? summary['totalRooms']
+              : int.tryParse(summary['totalRooms']?.toString() ?? '0') ?? _roomsTotal;
+          _roomsOccupied = summary['occupiedRooms'] is int
+              ? summary['occupiedRooms']
+              : int.tryParse(summary['occupiedRooms']?.toString() ?? '0') ?? _roomsOccupied;
+          _activeOrders = summary['activeOrdersCount'] is int
+              ? summary['activeOrdersCount']
+              : int.tryParse(summary['activeOrdersCount']?.toString() ?? '0') ?? _activeOrders;
+          _dailyRevenue = summary['todayTotalRevenue'] is num
+              ? (summary['todayTotalRevenue'] as num).toDouble()
+              : double.tryParse(summary['todayTotalRevenue']?.toString() ?? '0') ?? 0.0;
         });
       }
     } catch (_) {}
